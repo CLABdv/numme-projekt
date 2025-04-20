@@ -8,11 +8,11 @@ aa  = 1;
 %ys  = 0.43;
 %aa  = 1;
 
-S0 = @(x,y) cos(24*(x .^ 2 + y .^ 2)) .* exp(-900 * (x .^2 + y .^2));
+S0 = @(x,y) cos(24*X) .* exp(-900 * X .^ 2);
 
-S = @(x,y) S0(x-xs,y-ys);
+S = @(x,y) aa*S0(x-xs,y-ys);
 
-[B,Sol]=hhsolver(omega,S,300); 
+[B,Sol]=hhsolver(omega,S,100); 
 
 figure(1)
 
