@@ -54,13 +54,15 @@ x0s = xs * ones(nalphas,1) + 0.1 * rand(nalphas,1);
 y0s = ys * ones(nalphas,1) + 0.1 * rand(nalphas,1);
 
 % for some reason this doesnt always seem to converge?? wtf
-while true
-    dx =  -JacIc(x0s(i),y0s(i),as(i),alphas, eta) \ F(x0s(i), y0s(i), as(i), alphas, eta)
-    as(i) = as(i) + dx(1);
-    x0s(i) = x0s(i) + dx(2);
-    y0s(i) = y0s(i) + dx(3);
-    if all (abs(dx) - tau < 0)
-        break
+for i = 1:nalphas
+    while true
+        dx =  -JacIc(x0s(i),y0s(i),as(i),alphas(i), eta) \ F(x0s(i), y0s(i), as(i), alphas(i), eta)
+        as(i) = as(i) + dx(1);
+        x0s(i) = x0s(i) + dx(2);
+        y0s(i) = y0s(i) + dx(3);
+        if all (abs(dx) - tau < 0)
+            break
+        end
     end
 end
 
