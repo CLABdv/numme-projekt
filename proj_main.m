@@ -11,7 +11,7 @@ n = 10^7;
 s = 3; % e^(-2700) is prettei small, we ignore stuff outside of that (ish)
 R2 = rand(2,n) * s;
 muR2 = s^2;
-eta = MonteCarlogeneric(etaf, R2, size(R2, 2), muR2);
+eta = MonteCarlogeneric(etaf, R2, n, muR2);
 
 xs  = 0.45;
 ys  = 0.2;
@@ -45,18 +45,16 @@ alphas = linspace(0,2*pi, nalphas);
 %alpha = pi;
 
 
-x0 = xs;
-y0 = ys;
 tau = 1e-7;
 F = @(x0tilde, y0tilde, atilde, alphas) atilde .* eta .* vc(x0tilde, y0tilde, alphas)' - IcIntegral(alphas);
 
-x0tilde = ys + 0.5*rand();
-y0tilde = xs + 0.5*rand();
-a0tilde = a + 0.5*rand();
+x0tilde = ys + 0*rand();
+y0tilde = xs + 0*rand();
+a0tilde = a + 0*rand();
 
 % for some reason this doesnt always seem to converge?? wtf
 while true
-    dx =  -JacIc(x0tilde,y0tilde,a0tilde,alphas, eta) \ F(x0tilde, y0tilde, a0tilde, alphas)
+    dx =  -JacIc(x0tilde,y0tilde,a0tilde,alphas, eta) \ F(x0tilde, y0tilde, a0tilde, alphas);
     a0tilde = a0tilde + dx(1);
     x0tilde = x0tilde + dx(2);
     y0tilde = y0tilde + dx(3);
@@ -65,9 +63,15 @@ while true
     end
 end
 
-v = [as, x0s, y0s];
+v = [a0tilde, x0tilde, y0tilde];
 
+%% testplots
 
+figure(2)
+plot(alphas, IcShort(xs, ys, a, alphas));
+hold on;
+plot(alphas, IcIntegral(alphas));
+hold off;
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
