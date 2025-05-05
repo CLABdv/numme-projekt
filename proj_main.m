@@ -2,6 +2,7 @@
 omega = 19;
 
 S0 = @(x,y) cos(24*(x .^ 2 + y .^ 2)) .* exp(-900 * (x .^ 2 + y.^2));
+
 etaf = @(X) S0(X(1, :), X(2, :)) .* cos(omega * vecnorm(X));
 
 % we substitute R^2 with a square, S0 is small very fast possibly
@@ -32,17 +33,19 @@ hold off
 axis off
 %%
 
-g = B.un;
-vc = @(x, y, alpha) cos(omega*(cos(alpha) .* x + sin(alpha) .* y));
+vc = @(x, y, alpha) cos(omega*(x*cos(alpha) + y*sin(alpha)));
 
 % the vc(alpha)' * g makes each row dot product
+% 4
+% g = B.un
+% gnoise=g+max(abs(g))*randn(size(g))*noiselevel;
 IcIntegral = @(alpha) B.s(end) / length(B.s) * (vc(B.x, B.y, alpha)' * g);
-IcShort = @(x0tilde, y0tilde, atilde, alpha) a*eta*vc(x0tilde, y0tilde, alpha);
+
+IcShort = @(x0tilde, y0tilde, atilde, alpha) atilde*eta*vc(x0tilde, y0tilde, alpha);
 
 
 nalphas = 30;
 alphas = linspace(0,2*pi, nalphas);
-%alpha = pi;
 
 
 tau = 1e-7;
@@ -73,6 +76,16 @@ hold on;
 plot(alphas, IcIntegral(alphas));
 hold off;
 
+%% 5
+vs = @(x, y, alpha) sin(omega*(x*cos(alpha) + y*sin(alpha)));
+IsIntegral = @(alpha) B.s(end) / length(B.s) * (vs(B.x, B.y, alpha)' * g);
+
+Icprim = @(alpha, h) (IcIntegral(alpha + h) - IcIntegral(alpha - h))/(2*h);
+Icprim0 = Icprim(0, 1e-10);
+Icprim90deg = Icprim(pi/2, 1e-10);
+
+x0 = Icprim90deg / (omega*IsIntegral(pi/2));
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % f is function, D is the set, muD is measure of D
@@ -80,6 +93,7 @@ hold off;
 function I = MonteCarlogeneric(f, D, n, muD)
     I = muD / n * sum(f(D));
 end
+
 
 
 
