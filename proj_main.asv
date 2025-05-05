@@ -35,34 +35,33 @@ axis off
 g = B.un;
 vc = @(x, y, alpha) cos(omega*(cos(alpha) .* x + sin(alpha) .* y));
 
-
 % the vc(alpha)' * g makes each row dot product
 IcIntegral = @(alpha) B.s(end) / length(B.s) * (vc(B.x, B.y, alpha)' * g);
 IcShort = @(x0tilde, y0tilde, atilde, alpha) a*eta*vc(x0tilde, y0tilde, alpha);
 
 
-nalphas = 1;
+nalphas = 30;
 alphas = linspace(0,2*pi, nalphas);
 %alpha = pi;
 
 
 x0 = xs;
 y0 = ys;
-tau = 1e-10;
-as = a * ones(nalphas,1) + 0.5 * rand(nalphas,1);
-x0s = xs * ones(nalphas,1) + 0.1 * rand(nalphas,1);
-y0s = ys * ones(nalphas,1) + 0.1 * rand(nalphas,1);
+tau = 1e-7;
+F = @(x0tilde, y0tilde, atilde, alphas) atilde .* eta .* vc(x0tilde, y0tilde, alphas)' - IcIntegral(alphas);
+
+x0tilde = ys + 0.5*rand();
+y0tilde = xs + 0.5*rand();
+a0tilde = a + 0.5*rand();
 
 % for some reason this doesnt always seem to converge?? wtf
-for i = 1:nalphas
-    while true
-        dx =  -JacIc(x0s(i),y0s(i),as(i),alphas(i), eta) \ F(x0s(i), y0s(i), as(i), alphas(i), eta)
-        as(i) = as(i) + dx(1);
-        x0s(i) = x0s(i) + dx(2);
-        y0s(i) = y0s(i) + dx(3);
-        if all (abs(dx) - tau < 0)
-            break
-        end
+while true
+    dx =  -JacIc(x0tilde,y0tilde,a0tilde,alphas, eta) \ F(x0tilde, y0tilde, a0tilde, alphas)
+    a0tilde = a0tilde + dx(1);
+    x0tilde = x0tilde + dx(2);
+    y0tilde = y0tilde + dx(3);
+    if all (abs(dx) - tau < 0)
+        break
     end
 end
 
@@ -78,9 +77,7 @@ function I = MonteCarlogeneric(f, D, n, muD)
     I = muD / n * sum(f(D));
 end
 
-function Y = F(x0tilde, y0tilde, atilde, alphas, eta)
-    Y = atilde * eta * vc(x0tilde, y0tilde, alphas) - IcIntegral(alphas);
-end
+
 
 % Jacobi matrix for Ic
 function J = JacIc(x0tilde, y0tilde, atilde, alphas, eta)
