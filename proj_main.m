@@ -138,27 +138,78 @@ b = xs + eps;
 y = (sqrt(5) - 1)/2 * (b-a) + a;
 x = b - (sqrt(5) - 1)/2 * (b-a);
 
-f1 = f(x, ys, 1, S0);
-f2 = f(y, ys, 1, S0);
-
-
+f1 = f(x, ys, 1, S0, 1000);
+f2 = f(y, ys, 1, S0, 1000);
 
 while b - a > tau
     if f1 < f2
         a = x;
         x = b - (sqrt(5) - 1)/2 * (b-a);
-        f1 = f(x, ys, 1, S0);
-    else
+        f1 = f(x, ys, 1, S0, 1000);
+    else 
         b = y;
         y = (sqrt(5) - 1)/2 * (b-a) + a;
-        f2 = f(y, ys, 1, S0);
+        f2 = f(y, ys, 1, S0, 1000);
     end
+    disp(b-a)
 end
 
 disp("finshid")
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Grafer av bäst placering
+xs = a;
+S = @(x, y) 1 * S0(x-xs, y-ys);
+[B, Sol] = hhsolver(omega, S, 1000);
+figure(5)
+mesh(Sol.x,Sol.y,Sol.u)
 
+figure(6)
+contour(Sol.x,Sol.y,Sol.u,20)
+axis equal
+hold on
+plot(B.x,B.y,'k-','LineWidth',2)
+[c,hnd]=contour(Sol.x,Sol.y,S(Sol.x,Sol.y),10); %Sol.S,10);
+set(hnd,'Color','k','LineWidth',1.5)
+hold off
+axis off
+
+%% Grafer av relativt dålig placering (please consult the graph)
+xs = 0.87;
+S = @(x, y) 1 * S0(x-xs, y-ys);
+[B, Sol] = hhsolver(omega, S, 1000);
+figure(7)
+mesh(Sol.x,Sol.y,Sol.u)
+
+figure(8)
+contour(Sol.x,Sol.y,Sol.u,20)
+axis equal
+hold on
+plot(B.x,B.y,'k-','LineWidth',2)
+[c,hnd]=contour(Sol.x,Sol.y,S(Sol.x,Sol.y),10); %Sol.S,10);
+set(hnd,'Color','k','LineWidth',1.5)
+hold off
+axis off
+
+%% Two dimensional optimisation
+% Grovlokalisering med n = 100
+npoints = 20;
+
+xs = linspace(0.6, 1, npoints);
+ys = linspace(0, 1, npoints);
+
+As = zeros(npoints, npoints);
+
+for i = 1:length(xs)
+    for j = 1:length(ys)
+        As(i,j) = f(xs(i), ys(j), 1, S0, 100);
+    end
+    disp(i)
+end
+
+figure(9)
+mesh(xs, ys, As)
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Jacobi matrix for Ic
 function J = JacIc(x0tilde, y0tilde, atilde, alphas, eta)
@@ -172,10 +223,10 @@ function J = JacIc(x0tilde, y0tilde, atilde, alphas, eta)
 end
 
 
-function A = f(xs, ys, a, S0)
+function A = f(xs, ys, a, S0, n)
     omega = 19;
     S = @(x, y) a * S0(x-xs, y-ys);
-    [~, Sol] = hhsolver(omega, S, 1000);
+    [~, Sol] = hhsolver(omega, S, n);
     w = find(Sol.x<=0.25 & Sol.y>=0.5);
     A = max(abs(Sol.u(w)))/max(abs(Sol.u(:)));
 end
