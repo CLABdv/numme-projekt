@@ -110,6 +110,53 @@ hold off;
 
 
 
+
+%% Optimal TV-placering
+
+ys = 0.6;
+xs = linspace(0.6, 1);
+A = zeros(size(xs));
+for i = 1:length(xs)
+    S = @(x, y) a * S0(x-xs(i), y-ys);
+    [B, Sol] = hhsolver(omega, S, 100);
+    w = find(Sol.x<=0.25 & Sol.y>=0.5);
+    A(i) = max(abs(Sol.u(w)))/max(abs(Sol.u(:)));
+end
+figure(4);
+plot(xs, A);
+xs = 0.77; % approximative global minimum
+%% more exact solution
+
+
+
+tau = 1e-4;
+eps = 0.02;
+
+a = xs - eps;
+b = xs + eps;
+
+y = (sqrt(5) - 1)/2 * (b-a) + a;
+x = b - (sqrt(5) - 1)/2 * (b-a);
+
+f1 = f(x, ys, 1, S0);
+f2 = f(y, ys, 1, S0);
+
+
+
+while b - a > tau
+    if f1 < f2
+        a = x;
+        x = b - (sqrt(5) - 1)/2 * (b-a);
+        f1 = f(x, ys, 1, S0);
+    else
+        b = y;
+        y = (sqrt(5) - 1)/2 * (b-a) + a;
+        f2 = f(y, ys, 1, S0);
+    end
+end
+
+disp("finshid")
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
@@ -125,3 +172,10 @@ function J = JacIc(x0tilde, y0tilde, atilde, alphas, eta)
 end
 
 
+function A = f(xs, ys, a, S0)
+    omega = 19;
+    S = @(x, y) a * S0(x-xs, y-ys);
+    [~, Sol] = hhsolver(omega, S, 1000);
+    w = find(Sol.x<=0.25 & Sol.y>=0.5);
+    A = max(abs(Sol.u(w)))/max(abs(Sol.u(:)));
+end
