@@ -41,9 +41,9 @@ vc = @(x, y, alpha) cos(omega*(x*cos(alpha) + y*sin(alpha)));
 
 % the vc(alpha)' * g makes each row dot product
 % 4
-g = B.un;
-noiselevel = 0.5;
-g=g+max(abs(g))*randn(size(g))*noiselevel; % gnoise
+% g = B.un;
+noiselevel = 1;
+gnoise=g+max(abs(g))*randn(size(g))*noiselevel;
 IcIntegral = @(alpha) B.s(end) / length(B.s) * (vc(B.x, B.y, alpha)' * g);
 
 IcShort = @(x0tilde, y0tilde, atilde, alpha) atilde*eta*vc(x0tilde, y0tilde, alpha);
@@ -80,6 +80,7 @@ hold on;
 plot(alphas, IcIntegral(alphas));
 plot(alphas, IcShort(x0tilde,y0tilde,a0tilde,alphas));
 
+hold off;
 
 %% 5
 vs = @(x, y, alpha) sin(omega*(x*cos(alpha) + y*sin(alpha)));
@@ -89,24 +90,9 @@ Icprim = @(alpha, h) (IcIntegral(alpha + h) - IcIntegral(alpha - h))/(2*h);
 Icprim0 = Icprim(0, 1e-10);
 Icprim90deg = Icprim(pi/2, 1e-10);
 
-x0tilde = Icprim90deg / (omega*IsIntegral(pi/2));
-y0tilde = -Icprim0 / (omega * IsIntegral(0));
-a0tilde = 1 / eta * sqrt(IcIntegral(0)^2 + IsIntegral(0)^2);
-
-while true
-    dx =  -JacIc(x0tilde,y0tilde,a0tilde,alphas, eta) \ F(x0tilde, y0tilde, a0tilde, alphas);
-    a0tilde = a0tilde + dx(1);
-    x0tilde = x0tilde + dx(2);
-    y0tilde = y0tilde + dx(3);
-    if all (abs(dx) - tau < 0)
-        break
-    end
-end
-
-v = [a0tilde, x0tilde, y0tilde]
-
-plot(alphas, IcShort(x0tilde,y0tilde,a0tilde,alphas));
-hold off;
+x0 = Icprim90deg / (omega*IsIntegral(pi/2));
+y0 = -Icprim0 / (omega * IsIntegral(0));
+a0 = 1 / eta * sqrt(IcIntegral(0)^2 + IsIntegral(0)^2);
 
 
 
