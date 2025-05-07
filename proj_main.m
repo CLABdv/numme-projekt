@@ -16,7 +16,6 @@ R2 = rand(2,n) * s - 1.5;
 fs = etaf(R2(1,:), R2(2,:));
 eta = s*s/n * sum(fs);
 
-%eta = integral2(etaf, -3, 3, -3, 3)
 
 xs  = 0.45;
 ys  = 0.2;
@@ -35,7 +34,7 @@ plot(B.x,B.y,'k-','LineWidth',2)
 set(hnd,'Color','k','LineWidth',1.5)
 hold off
 axis off
-%%
+%% Gauss Newton
 
 vc = @(x, y, alpha) cos(omega*(x*cos(alpha) + y*sin(alpha)));
 
@@ -61,40 +60,7 @@ y0tilde = ys + 0.1*rand();
 a0tilde = a + 0.1*rand();
 
 while true
-    dx =  -JacIc(x0tilde,y0tilde,a0tilde,alphas, eta) \ F(x0tilde, y0tilde, a0tilde, alphas);
-    a0tilde = a0tilde + dx(1);
-    x0tilde = x0tilde + dx(2);
-    y0tilde = y0tilde + dx(3);
-    if all (abs(dx) - tau < 0)
-        break
-    end
-end
-
-v = [a0tilde, x0tilde, y0tilde];
-
-%% testplots
-
-figure(2)
-plot(alphas, IcShort(xs, ys, a, alphas));
-hold on;
-plot(alphas, IcIntegral(alphas));
-plot(alphas, IcShort(x0tilde,y0tilde,a0tilde,alphas));
-
-
-%% 5
-vs = @(x, y, alpha) sin(omega*(x*cos(alpha) + y*sin(alpha)));
-IsIntegral = @(alpha) B.s(end) / length(B.s) * (vs(B.x, B.y, alpha)' * g);
-
-Icprim = @(alpha, h) (IcIntegral(alpha + h) - IcIntegral(alpha - h))/(2*h);
-Icprim0 = Icprim(0, 1e-10);
-Icprim90deg = Icprim(pi/2, 1e-10);
-
-x0tilde = Icprim90deg / (omega*IsIntegral(pi/2));
-y0tilde = -Icprim0 / (omega * IsIntegral(0));
-a0tilde = 1 / eta * sqrt(IcIntegral(0)^2 + IsIntegral(0)^2);
-
-while true
-    dx =  -JacIc(x0tilde,y0tilde,a0tilde,alphas, eta) \ F(x0tilde, y0tilde, a0tilde, alphas);
+    dx =  -JacIc(x0tilde,y0tilde,a0tilde,alphas, eta, omega) \ F(x0tilde, y0tilde, a0tilde, alphas);
     a0tilde = a0tilde + dx(1);
     x0tilde = x0tilde + dx(2);
     y0tilde = y0tilde + dx(3);
@@ -105,13 +71,18 @@ end
 
 v = [a0tilde, x0tilde, y0tilde]
 
-plot(alphas, IcShort(x0tilde,y0tilde,a0tilde,alphas));
-hold off;
+%% testplots
 
+figure(2)
+plot(alphas, IcShort(xs, ys, a, alphas));
+hold on;
+plot(alphas, IcIntegral(alphas));
+plot(alphas, IcShort(x0tilde,y0tilde,a0tilde,alphas));
 
 
 
 %% Optimal TV-placering
+omega = 30;
 
 ys = 0.6;
 xs = linspace(0.6, 1);
@@ -122,9 +93,9 @@ for i = 1:length(xs)
     w = find(Sol.x<=0.25 & Sol.y>=0.5);
     A(i) = max(abs(Sol.u(w)))/max(abs(Sol.u(:)));
 end
-figure(4);
+figure(3);
 plot(xs, A);
-xs = 0.77; % approximative global minimum
+xs = 0.67; % approximative global minimum
 %% more exact solution
 
 
@@ -160,10 +131,10 @@ disp("finshid")
 xs = a;
 S = @(x, y) 1 * S0(x-xs, y-ys);
 [B, Sol] = hhsolver(omega, S, 1000);
-figure(5)
+figure(4)
 mesh(Sol.x,Sol.y,Sol.u)
 
-figure(6)
+figure(5)
 contour(Sol.x,Sol.y,Sol.u,20)
 axis equal
 hold on
@@ -177,10 +148,10 @@ axis off
 xs = 0.87;
 S = @(x, y) 1 * S0(x-xs, y-ys);
 [B, Sol] = hhsolver(omega, S, 1000);
-figure(7)
+figure(6)
 mesh(Sol.x,Sol.y,Sol.u)
 
-figure(8)
+figure(7)
 contour(Sol.x,Sol.y,Sol.u,20)
 axis equal
 hold on
@@ -199,21 +170,99 @@ ys = linspace(0, 1, npoints);
 
 As = zeros(npoints, npoints);
 
+xsMin = NaN;
+ysMin = NaN;
+AMin = inf;
+
 for i = 1:length(xs)
     for j = 1:length(ys)
         As(i,j) = f(xs(i), ys(j), 1, S0, 100);
+        if As(i, j) < AMin
+            xsMin = xs(i);
+            ysMin=ys(j);
+            AMin = As(i,j);
+        end
     end
     disp(i)
 end
 
-figure(9)
+figure(8)
 mesh(xs, ys, As)
+disp("grov minimum [x;y]:")
+disp([xsMin; ysMin])
+g = @(X) f(X(1), X(2), 1, S0, 1000);
+options = optimset('Display', 'iter');
+x = fminsearch(g, [xsMin;ysMin], options);
+
+%% Grafer av bäst placering
+S = @(x, y) 1 * S0(x-xsMin, y-ysMin);
+[B, Sol] = hhsolver(omega, S, 1000);
+figure(9)
+mesh(Sol.x,Sol.y,Sol.u)
+
+figure(10)
+contour(Sol.x,Sol.y,Sol.u,20)
+axis equal
+hold on
+plot(B.x,B.y,'k-','LineWidth',2)
+[c,hnd]=contour(Sol.x,Sol.y,S(Sol.x,Sol.y),10); %Sol.S,10);
+set(hnd,'Color','k','LineWidth',1.5)
+hold off
+axis off
+
+%% 5 / 6
+T = zeros(5,3);
+for i = 1:5
+    filename = sprintf("source%d.mat", i);
+    load(filename);
+    g=B.un;
+
+    etaf = @(x ,y) S0(x, y) .* cos(omega * x);
+    n = 10^7;
+    s = 3;
+    R2 = rand(2,n) * s - 1.5;
+
+    %eta = MonteCarlogeneric(etaf, R2, n, muR2);
+    fs = etaf(R2(1,:), R2(2,:));
+    eta = s*s/n * sum(fs);
+
+    vs = @(x, y, alpha) sin(omega*(x*cos(alpha) + y*sin(alpha)));
+    vc = @(x, y, alpha) cos(omega*(x*cos(alpha) + y*sin(alpha)));
+    IcIntegral = @(alpha) B.s(end) / length(B.s) * (vc(B.x, B.y, alpha)' * g);
+    IsIntegral = @(alpha) B.s(end) / length(B.s) * (vs(B.x, B.y, alpha)' * g);
+
+    Icprim = @(alpha, h) (IcIntegral(alpha + h) - IcIntegral(alpha - h))/(2*h);
+    Icprim0 = Icprim(0, 1e-10);
+    Icprim90deg = Icprim(pi/2, 1e-10);
+    F = @(x0tilde, y0tilde, atilde, alphas) atilde .* eta .* vc(x0tilde, y0tilde, alphas)' - IcIntegral(alphas);
+
+    x0tilde = Icprim90deg / (omega*IsIntegral(pi/2));
+    y0tilde = -Icprim0 / (omega * IsIntegral(0));
+    a0tilde = 1 / eta * sqrt(IcIntegral(0)^2 + IsIntegral(0)^2);
+
+    while true
+        dx =  -JacIc(x0tilde,y0tilde,a0tilde,alphas, eta, omega) \ F(x0tilde, y0tilde, a0tilde, alphas);
+        a0tilde = a0tilde + dx(1);
+        x0tilde = x0tilde + dx(2);
+        y0tilde = y0tilde + dx(3);
+        if all (abs(dx) - tau < 0)
+            break
+        end
+    end
+
+    v = [a0tilde, x0tilde, y0tilde];
+    T(i, :) = v;
+    figure(100+i);
+    plot(alphas, IcShort(x0tilde,y0tilde,a0tilde,alphas));
+end
+tab=array2table(T,'VariableNames',{'atilde', 'x0tilde', 'y0tilde'},'RowNames',{'source1','source2','source3','source4', 'source5'});
+disp(tab);
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Jacobi matrix for Ic
-function J = JacIc(x0tilde, y0tilde, atilde, alphas, eta)
-     omega = 19;
+function J = JacIc(x0tilde, y0tilde, atilde, alphas, eta, omega)
      J = zeros(length(alphas),3);
      for i = 1:length(alphas)
          J(i,1) = eta * cos(omega * (x0tilde .* cos(alphas(i)) + y0tilde .* sin(alphas(i)))); %dF/da
@@ -224,7 +273,7 @@ end
 
 
 function A = f(xs, ys, a, S0, n)
-    omega = 19;
+    omega = 30;
     S = @(x, y) a * S0(x-xs, y-ys);
     [~, Sol] = hhsolver(omega, S, n);
     w = find(Sol.x<=0.25 & Sol.y>=0.5);
