@@ -1,6 +1,5 @@
 %% Part one: Calculation of eta
 omega = 19;
-
 S0 = @(x,y) cos(24*(x .^ 2 + y .^ 2)) .* exp(-900 * (x .^ 2 + y.^2));
 
 etaf = @(x ,y) S0(x, y) .* cos(omega * x);
@@ -23,7 +22,7 @@ a = 1;
 S = @(x, y) a * S0(x-xs, y-ys);
 
 [B, Sol] = hhsolver(omega, S, 300);
-
+fprintf("We have chosen xs=%f, ys=%f and a=%f. Our value for eta is %f\n", xs, ys, a, eta)
 %% Some random plotting
 figure(1)
 contour(Sol.x,Sol.y,Sol.u,20)
@@ -36,16 +35,21 @@ hold off
 axis off
 %% Gauss Newton
 
-vc = @(x, y, alpha) cos(omega*(x*cos(alpha) + y*sin(alpha)));
 
 % the vc(alpha)' * g makes each row dot product
 % 4
 g = B.un;
-noiselevel = 0.5;
+noiselevel = 0.2;
 g=g+max(abs(g))*randn(size(g))*noiselevel; % gnoise
+vs = @(x, y, alpha) sin(omega*(x*cos(alpha) + y*sin(alpha)));
+vc = @(x, y, alpha) cos(omega*(x*cos(alpha) + y*sin(alpha)));
 IcIntegral = @(alpha) B.s(end) / length(B.s) * (vc(B.x, B.y, alpha)' * g);
+IsIntegral = @(alpha) B.s(end) / length(B.s) * (vs(B.x, B.y, alpha)' * g);
 
-IcShort = @(x0tilde, y0tilde, atilde, alpha) atilde*eta*vc(x0tilde, y0tilde, alpha);
+
+Icprim = @(alpha, h) (IcIntegral(alpha + h) - IcIntegral(alpha - h))/(2*h);
+Icprim0 = Icprim(0, 1e-10);
+Icprim90deg = Icprim(pi/2, 1e-10);
 
 
 nalphas = 30;
@@ -53,36 +57,24 @@ alphas = linspace(0,2*pi, nalphas);
 
 
 tau = 1e-7;
-F = @(x0tilde, y0tilde, atilde, alphas) atilde .* eta .* vc(x0tilde, y0tilde, alphas)' - IcIntegral(alphas);
+Ftemp = @(atilde, x0tilde, y0tilde, alphas) atilde .* eta .* vc(x0tilde, y0tilde, alphas)' - IcIntegral(alphas);
 
-x0tilde = xs + 0.1*rand();
-y0tilde = ys + 0.1*rand();
-a0tilde = a + 0.1*rand();
+x0tilde = Icprim90deg / (omega*IsIntegral(pi/2));
+y0tilde = -Icprim0 / (omega * IsIntegral(0));
+a0tilde = 1 / eta * sqrt(IcIntegral(0)^2 + IsIntegral(0)^2);
 
-while true
-    dx =  -JacIc(x0tilde,y0tilde,a0tilde,alphas, eta, omega) \ F(x0tilde, y0tilde, a0tilde, alphas);
-    a0tilde = a0tilde + dx(1);
-    x0tilde = x0tilde + dx(2);
-    y0tilde = y0tilde + dx(3);
-    if all (abs(dx) - tau < 0)
-        break
-    end
-end
+X0 = [a0tilde; x0tilde; y0tilde];
+F = @(X) Ftemp(X(1), X(2), X(3), alphas);
+J = @(X) JacIc(X(1), X(2), X(3), alphas, eta, omega);
+X = gaussNewton(X0, F, J,tau);
 
-v = [a0tilde, x0tilde, y0tilde]
-
-%% testplots
-
-figure(2)
-plot(alphas, IcShort(xs, ys, a, alphas));
-hold on;
-plot(alphas, IcIntegral(alphas));
-plot(alphas, IcShort(x0tilde,y0tilde,a0tilde,alphas));
-
+fprintf("With noiselevel = %f our estimations of a = %f, x0 = %f, y0 = %f\n", noiselevel, X(1), X(2), X(3));
 
 
 %% Optimal TV-placering
+disp("Optimal TV-placering:")
 omega = 30;
+fprintf("omega = %f\n", omega)
 
 ys = 0.6;
 xs = linspace(0.6, 1);
@@ -95,10 +87,9 @@ for i = 1:length(xs)
 end
 figure(3);
 plot(xs, A);
+legend("A", 'Location', 'southeast')
 xs = 0.67; % approximative global minimum
 %% more exact solution
-
-
 
 tau = 1e-4;
 eps = 0.02;
@@ -125,8 +116,7 @@ while b - a > tau
     disp(b-a)
 end
 
-disp("finshid")
-
+fprintf("TV'n har sin optimala placering x0 \\in [%f;%f] när y är fixerad på väggen, den relativa ljudnivån blir då %f\n", a, b, f(a, ys, 1, S0, 1000));
 %% Grafer av bäst placering
 xs = a;
 S = @(x, y) 1 * S0(x-xs, y-ys);
@@ -145,7 +135,8 @@ hold off
 axis off
 
 %% Grafer av relativt dålig placering (please consult the graph)
-xs = 0.87;
+xs = 0.75;
+fprintf("x0=%f är en relativt dålig placering, relativ ljudnivå A = %f\n", xs, f(xs, ys, 1, S0, 1000))
 S = @(x, y) 1 * S0(x-xs, y-ys);
 [B, Sol] = hhsolver(omega, S, 1000);
 figure(6)
@@ -183,7 +174,6 @@ for i = 1:length(xs)
             AMin = As(i,j);
         end
     end
-    disp(i)
 end
 
 figure(8)
@@ -193,6 +183,7 @@ disp([xsMin; ysMin])
 g = @(X) f(X(1), X(2), 1, S0, 1000);
 options = optimset('Display', 'iter');
 x = fminsearch(g, [xsMin;ysMin], options);
+fprintf("Den optimala placeringen av TV'n i det högra rummet är [%f, %f], då är den relativa ljudnivån A = %f\n", x(1), x(2), f(x(1),x(2),1,S0,1000))
 
 %% Grafer av bäst placering
 S = @(x, y) 1 * S0(x-xsMin, y-ysMin);
@@ -234,26 +225,18 @@ for i = 1:5
     Icprim = @(alpha, h) (IcIntegral(alpha + h) - IcIntegral(alpha - h))/(2*h);
     Icprim0 = Icprim(0, 1e-10);
     Icprim90deg = Icprim(pi/2, 1e-10);
-    F = @(x0tilde, y0tilde, atilde, alphas) atilde .* eta .* vc(x0tilde, y0tilde, alphas)' - IcIntegral(alphas);
-
+        
     x0tilde = Icprim90deg / (omega*IsIntegral(pi/2));
     y0tilde = -Icprim0 / (omega * IsIntegral(0));
-    a0tilde = 1 / eta * sqrt(IcIntegral(0)^2 + IsIntegral(0)^2);
+    n = length(alphas);
+    a0tilde = 1 / eta * sqrt(IcIntegral(0).^2 + IsIntegral(0).^2);
+    Ftemp = @(atilde, x0tilde, y0tilde, alphas) atilde .* eta .* vc(x0tilde, y0tilde, alphas)' - IcIntegral(alphas);
+    F = @(X) Ftemp(X(1), X(2), X(3), alphas);
+    J = @(X) JacIc(X(1), X(2), X(3), alphas, eta, omega);
 
-    while true
-        dx =  -JacIc(x0tilde,y0tilde,a0tilde,alphas, eta, omega) \ F(x0tilde, y0tilde, a0tilde, alphas);
-        a0tilde = a0tilde + dx(1);
-        x0tilde = x0tilde + dx(2);
-        y0tilde = y0tilde + dx(3);
-        if all (abs(dx) - tau < 0)
-            break
-        end
-    end
-
-    v = [a0tilde, x0tilde, y0tilde];
-    T(i, :) = v;
-    figure(100+i);
-    plot(alphas, IcShort(x0tilde,y0tilde,a0tilde,alphas));
+    X0 = [a0tilde; x0tilde; y0tilde];
+    X = gaussNewton(X0, F, J,tau);
+    T(i, :) = X;
 end
 tab=array2table(T,'VariableNames',{'atilde', 'x0tilde', 'y0tilde'},'RowNames',{'source1','source2','source3','source4', 'source5'});
 disp(tab);
@@ -262,7 +245,7 @@ disp(tab);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Jacobi matrix for Ic
-function J = JacIc(x0tilde, y0tilde, atilde, alphas, eta, omega)
+function J = JacIc(atilde, x0tilde, y0tilde, alphas, eta, omega)
      J = zeros(length(alphas),3);
      for i = 1:length(alphas)
          J(i,1) = eta * cos(omega * (x0tilde .* cos(alphas(i)) + y0tilde .* sin(alphas(i)))); %dF/da
@@ -271,11 +254,26 @@ function J = JacIc(x0tilde, y0tilde, atilde, alphas, eta, omega)
      end
 end
 
-
+% f är funktionen som används för att finna lägsta relativa ljudnivån för
+% TV'n
 function A = f(xs, ys, a, S0, n)
     omega = 30;
     S = @(x, y) a * S0(x-xs, y-ys);
     [~, Sol] = hhsolver(omega, S, n);
     w = find(Sol.x<=0.25 & Sol.y>=0.5);
     A = max(abs(Sol.u(w)))/max(abs(Sol.u(:)));
+end
+
+
+% F är en funktion och J är dess Jacobian, tau är felgräns
+function X = gaussNewton(X0, F, J, tau)
+    while true
+        dx = - J(X0) \ F(X0);
+        X0 = X0 + dx;
+        if all (abs(dx) - tau < 0)
+            break
+        end
+    end
+
+    X = X0;
 end
