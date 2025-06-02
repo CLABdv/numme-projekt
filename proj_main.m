@@ -208,12 +208,11 @@ for i = 1:5
     load(filename);
     g=B.un;
 
+    % these need to be redefined since our omega changes
     etaf = @(x ,y) S0(x, y) .* cos(omega * x);
     n = 10^7;
     s = 3;
     R2 = rand(2,n) * s - 1.5;
-
-    %eta = MonteCarlogeneric(etaf, R2, n, muR2);
     fs = etaf(R2(1,:), R2(2,:));
     eta = s*s/n * sum(fs);
 
@@ -221,15 +220,14 @@ for i = 1:5
     vc = @(x, y, alpha) cos(omega*(x*cos(alpha) + y*sin(alpha)));
     IcIntegral = @(alpha) B.s(end) / length(B.s) * (vc(B.x, B.y, alpha)' * g);
     IsIntegral = @(alpha) B.s(end) / length(B.s) * (vs(B.x, B.y, alpha)' * g);
-
     Icprim = @(alpha, h) (IcIntegral(alpha + h) - IcIntegral(alpha - h))/(2*h);
     Icprim0 = Icprim(0, 1e-10);
     Icprim90deg = Icprim(pi/2, 1e-10);
         
     x0tilde = Icprim90deg / (omega*IsIntegral(pi/2));
     y0tilde = -Icprim0 / (omega * IsIntegral(0));
-    n = length(alphas);
     a0tilde = 1 / eta * sqrt(IcIntegral(0).^2 + IsIntegral(0).^2);
+    
     Ftemp = @(atilde, x0tilde, y0tilde, alphas) atilde .* eta .* vc(x0tilde, y0tilde, alphas)' - IcIntegral(alphas);
     F = @(X) Ftemp(X(1), X(2), X(3), alphas);
     J = @(X) JacIc(X(1), X(2), X(3), alphas, eta, omega);
