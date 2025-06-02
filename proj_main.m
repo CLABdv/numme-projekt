@@ -9,7 +9,7 @@ etaf = @(x ,y) S0(x, y) .* cos(omega * x);
 % results for lower n (as seen on wikipedia)
 n = 10^7;
 s = 3;
-R2 = rand(2,n) * s - 1.5;
+R2 = rand(2,n) * s - s/2;
 
 %eta = MonteCarlogeneric(etaf, R2, n, muR2);
 fs = etaf(R2(1,:), R2(2,:));
@@ -206,7 +206,7 @@ hold off
 axis off
 
 %% 5 / 6 (observera att dessa är del av del 3, men modifierar värden som används i del 4)
-T = zeros(5,3);
+T = zeros(5,4);
 for i = 1:5
     filename = sprintf("source%d.mat", i);
     load(filename);
@@ -238,9 +238,10 @@ for i = 1:5
 
     X0 = [a0tilde; x0tilde; y0tilde];
     X = gaussNewton(X0, F, J,tau);
-    T(i, :) = X;
+    T(i, 1:3) = X;
+    T(i,4) = norm(F(X)); % räknar normen av residualen istället så att den får plats i tabellen
 end
-tab=array2table(T,'VariableNames',{'atilde', 'x0tilde', 'y0tilde'},'RowNames',{'source1','source2','source3','source4', 'source5'});
+tab=array2table(T,'VariableNames',{'atilde', 'x0tilde', 'y0tilde', 'norm(res)'},'RowNames',{'source1','source2','source3','source4', 'source5'});
 disp(tab);
 
 
@@ -268,7 +269,7 @@ end
 
 
 % F är en funktion och J är dess Jacobian, tau är felgräns
-function X = gaussNewton(X0, F, J, tau)
+function [X] = gaussNewton(X0, F, J, tau)
     while true
         dx = - J(X0) \ F(X0);
         X0 = X0 + dx;
