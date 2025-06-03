@@ -15,6 +15,20 @@ R2 = rand(2,n) * s - s/2;
 fs = etaf(R2(1,:), R2(2,:));
 eta = s*s/n * sum(fs);
 
+n = 10^4; % sqrt of samples (side)
+h = s / n;
+x = linspace(-s/2, s/2,n);
+y = linspace(-s/2, s/2,n);
+
+xIntegrals = zeros(n,1);
+for i = 1:n
+    xIntegrals(i) = h*(etaf(x(1), y(i))/2 + sum(etaf(x(2:end-1), y(i)) + etaf(x(end), y(i))/2));
+end
+
+etaTrapetzoid = h*(xIntegrals(1) / 2 + sum(xIntegrals(2:end-1)) + xIntegrals(end)/2);
+
+
+
 
 xs  = 0.45;
 ys  = 0.2;
@@ -23,6 +37,11 @@ S = @(x, y) a * S0(x-xs, y-ys);
 
 [B, Sol] = hhsolver(omega, S, 300);
 fprintf("We have chosen xs=%f, ys=%f and a=%f. Our value for eta is %f\n", xs, ys, a, eta)
+fprintf("error for eta from monte carlo is %f\n", integral2(etaf, -1.5,1.5,-1.5,1.5) - eta);
+fprintf("error for eta from trapetzoid is %f\n", integral2(etaf, -1.5,1.5,-1.5,1.5) - etaTrapetzoid);
+
+eta = etaTrapetzoid;
+
 %% Some random plotting
 figure(1)
 contour(Sol.x,Sol.y,Sol.u,20)
@@ -69,7 +88,7 @@ J = @(X) JacIc(X(1), X(2), X(3), alphas, eta, omega);
 X = gaussNewton(X0, F, J,tau);
 
 fprintf("With noiselevel = %f our estimations of a = %f, x0 = %f, y0 = %f\n", noiselevel, X(1), X(2), X(3));
-
+fprintf("norm of last residual is %f\n", norm(F(X)))
 
 %% Optimal TV-placering
 disp("Optimal TV-placering:")
