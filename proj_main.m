@@ -232,12 +232,31 @@ for i = 1:5
     g=B.un;
 
     % these need to be redefined since our omega changes
-    etaf = @(x ,y) S0(x, y) .* cos(omega * x);
-    n = 10^7;
+    %etaf = @(x ,y) S0(x, y) .* cos(omega * x);
+    %n = 10^7;
     s = 3;
-    R2 = rand(2,n) * s - 1.5;
-    fs = etaf(R2(1,:), R2(2,:));
-    eta = s*s/n * sum(fs);
+    %R2 = rand(2,n) * s - 1.5;
+    %fs = etaf(R2(1,:), R2(2,:));
+    %eta = s*s/n * sum(fs);
+
+
+
+    n = 10^4; % sqrt of samples (side)
+    h = s / n;
+    x = linspace(-s/2, s/2,n);
+    y = linspace(-s/2, s/2,n);
+    
+    xIntegrals = zeros(n,1);
+    for j = 1:n
+        xIntegrals(j) = h*(etaf(x(1), y(j))/2 + sum(etaf(x(2:end-1), y(j)) + etaf(x(end), y(j))/2));
+    end
+
+    eta = h*(xIntegrals(1) / 2 + sum(xIntegrals(2:end-1)) + xIntegrals(end)/2);
+
+
+
+
+
 
     vs = @(x, y, alpha) sin(omega*(x*cos(alpha) + y*sin(alpha)));
     vc = @(x, y, alpha) cos(omega*(x*cos(alpha) + y*sin(alpha)));
