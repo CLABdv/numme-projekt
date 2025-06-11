@@ -4,31 +4,12 @@ S0 = @(x,y) cos(24*sqrt(x .^ 2 + y .^ 2)) .* exp(-900 * (x .^ 2 + y.^2));
 
 etaf = @(x ,y) S0(x, y) .* cos(omega * x);
 
-% we substitute R^2 with a square, S0 is small very fast possibly
-% could try monte carlo integration with a normal distribution for better
-% results for lower n (as seen on wikipedia)
-n = 10^7;
 s = 3;
-R2 = rand(2,n) * s - s/2;
 
-%eta = MonteCarlogeneric(etaf, R2, n, muR2);
-fs = etaf(R2(1,:), R2(2,:));
-eta = s*s/n * sum(fs);
 
 n = 10^4; % sqrt of samples (side)
-h = s / n;
-x = linspace(-s/2, s/2,n);
-y = linspace(-s/2, s/2,n);
-
-xIntegrals = zeros(n,1);
-for i = 1:n
-    xIntegrals(i) = h*(etaf(x(1), y(i))/2 + sum(etaf(x(2:end-1), y(i)) + etaf(x(end), y(i))/2));
-end
-
-etaTrapetzoid = h*(xIntegrals(1) / 2 + sum(xIntegrals(2:end-1)) + xIntegrals(end)/2);
-
-
-
+etaTrapetzoid = trapetzoid2(-s/2,s/2,-s/2,s/2,etaf,n);
+etaTrapetzoid2h = trapetzoid2(-s/2,s/2,-s/2,s/2,etaf,n/2);
 
 xs  = 0.45;
 ys  = 0.2;
@@ -36,11 +17,11 @@ a = 1;
 S = @(x, y) a * S0(x-xs, y-ys);
 
 [B, Sol] = hhsolver(omega, S, 300);
-fprintf("We have chosen xs=%f, ys=%f and a=%f. Our value for eta is %f\n", xs, ys, a, eta)
-fprintf("error for eta from monte carlo is %f\n", integral2(etaf, -1.5,1.5,-1.5,1.5) - eta);
-fprintf("error for eta from trapetzoid is %f\n", integral2(etaf, -1.5,1.5,-1.5,1.5) - etaTrapetzoid);
-
 eta = etaTrapetzoid;
+fprintf("We have chosen xs=%f, ys=%f and a=%f. Our value for eta is %f\n", xs, ys, a, eta)
+fprintf("Error is strictly less than |eta_2h-eta_h| = %.12f\n", abs(etaTrapetzoid2h - etaTrapetzoid))
+
+
 
 %% Some random plotting
 figure(1)
@@ -317,4 +298,17 @@ function [X] = gaussNewton(X0, F, J, tau)
     end
 
     X = X0;
+end
+
+%trapetzoid over [a,b] x [c,d]
+function I = trapetzoid2(a,b,c,d,f,n)
+    x = linspace(a,b,n);
+    y = linspace(c,d,n);
+    
+    yIntegrals = zeros(n,1);
+    for i = 1:n
+        yIntegrals(i) = (b-a)/n*(f(x(1), y(i))/2 + sum(f(x(2:end-1), y(i)) + f(x(end), y(i))/2));
+    end
+    
+    I = (d-c)/n*(yIntegrals(1) / 2 + sum(yIntegrals(2:end-1)) + yIntegrals(end)/2);
 end
